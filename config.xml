@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.find.object.testpic" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>Find Objects</name>
+    <description>
+        Find Objects game (Testpic) with AppLovin MAX ads.
+    </description>
+    <author email="dev@cordova.apache.org" href="https://cordova.apache.org">
+        Apache Cordova Team
+    </author>
+    <content src="index.html" />
+
+    <icon src="res/android/xxxhdpi.png" />
+
+    <platform name="android">
+        <icon src="res/android/ldpi.png"    density="ldpi" />
+        <icon src="res/android/mdpi.png"    density="mdpi" />
+        <icon src="res/android/hdpi.png"    density="hdpi" />
+        <icon src="res/android/xhdpi.png"   density="xhdpi" />
+        <icon src="res/android/xxhdpi.png"  density="xxhdpi" />
+        <icon src="res/android/xxxhdpi.png" density="xxxhdpi" />
+        <splash src="res/screen/android/ldpi.png"    density="ldpi" />
+        <splash src="res/screen/android/mdpi.png"    density="mdpi" />
+        <splash src="res/screen/android/hdpi.png"    density="hdpi" />
+        <splash src="res/screen/android/xhdpi.png"   density="xhdpi" />
+        <splash src="res/screen/android/xxhdpi.png"  density="xxhdpi" />
+        <splash src="res/screen/android/xxxhdpi.png" density="xxxhdpi" />
+        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="res/screen/android/splashscreen.png" />
+        <preference name="AndroidWindowSplashScreenBackground" value="#1a1040" />
+    </platform>
+
+    <hook type="after_prepare" src="hooks/after_prepare/patch-android-splash.js" />
+
+    <preference name="SplashScreen" value="screen" />
+    <preference name="SplashScreenDelay" value="2000" />
+    <preference name="AutoHideSplashScreen" value="true" />
+    <preference name="FadeSplashScreen" value="true" />
+
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <allow-navigation href="https://stage-configs.artintgames.com/*" />
+    <allow-navigation href="https://stage-auth.artintgames.com/*" />
+    <allow-navigation href="https://stage-profile.artintgames.com/*" />
+    <access origin="*" />
+
+</widget>

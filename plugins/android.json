@@ -1,0 +1,19 @@
+{
+  "prepare_queue": {
+    "installed": [],
+    "uninstalled": []
+  },
+  "config_munge": {
+    "files": {}
+  },
+  "installed_plugins": {
+    "cordova-plugin-applovin-max": {
+      "PACKAGE_NAME": "com.find.object.testpic"
+    },
+    "cordova-plugin-googleplus": {
+      "PLAY_SERVICES_VERSION": "15.0.1",
+      "PACKAGE_NAME": "com.find.object.testpic"
+    }
+  },
+  "dependent_plugins": {}
+}

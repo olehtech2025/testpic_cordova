@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.find.object.testpic" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <feature name="AppLovinMAX">
+        <param name="android-package" value="com.applovin.cordova.AppLovinMAX" />
+        <param name="onload" value="true" />
+    </feature>
+    <feature name="GooglePlus">
+        <param name="android-package" value="nl.xservices.plugins.GooglePlus" />
+        <param name="onload" value="true" />
+    </feature>
+    <access origin="https://accounts.google.com/*" />
+    <name>Find Objects</name>
+    <description>
+        Find Objects game (Testpic) with AppLovin MAX ads.
+    </description>
+    <author email="dev@cordova.apache.org" href="https://cordova.apache.org">
+        Apache Cordova Team
+    </author>
+    <content src="index.html" />
+    <icon src="res/android/xxxhdpi.png" />
+    <hook src="hooks/after_prepare/patch-android-splash.js" type="after_prepare" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <allow-navigation href="https://stage-configs.artintgames.com/*" />
+    <allow-navigation href="https://stage-auth.artintgames.com/*" />
+    <allow-navigation href="https://stage-profile.artintgames.com/*" />
+    <access origin="*" />
+    <icon density="ldpi" src="res/android/ldpi.png" />
+    <icon density="mdpi" src="res/android/mdpi.png" />
+    <icon density="hdpi" src="res/android/hdpi.png" />
+    <icon density="xhdpi" src="res/android/xhdpi.png" />
+    <icon density="xxhdpi" src="res/android/xxhdpi.png" />
+    <icon density="xxxhdpi" src="res/android/xxxhdpi.png" />
+    <splash density="ldpi" src="res/screen/android/ldpi.png" />
+    <splash density="mdpi" src="res/screen/android/mdpi.png" />
+    <splash density="hdpi" src="res/screen/android/hdpi.png" />
+    <splash density="xhdpi" src="res/screen/android/xhdpi.png" />
+    <splash density="xxhdpi" src="res/screen/android/xxhdpi.png" />
+    <splash density="xxxhdpi" src="res/screen/android/xxxhdpi.png" />
+    <preference name="loglevel" value="DEBUG" />
+    <preference name="SplashScreen" value="screen" />
+    <preference name="SplashScreenDelay" value="2000" />
+    <preference name="AutoHideSplashScreen" value="true" />
+    <preference name="FadeSplashScreen" value="true" />
+    <preference name="AndroidWindowSplashScreenAnimatedIcon" value="res/screen/android/splashscreen.png" />
+    <preference name="AndroidWindowSplashScreenBackground" value="#1a1040" />
+</widget>
