@@ -4722,6 +4722,64 @@ let currentLevelIndex = 0;
             return getCurrentAuthStatus();
         }
 
+        let reinitConfigsPromise = null;
+        async function reinitConfigsAfterLogin() {
+            if (reinitConfigsPromise) return reinitConfigsPromise;
+            reinitConfigsPromise = (async () => {
+                try {
+                    const configResult = await coreSDK.initConfigs({
+                        version: '2.0.0',
+                        keys: ['testpic-init']
+                    });
+                    const newLevels = configResult.get('testpic-init.LEVELS');
+                    if (Array.isArray(newLevels) && newLevels.length) {
+                        LEVELS = newLevels;
+                        if (currentLevelIndex >= LEVELS.length) currentLevelIndex = 0;
+                        maxUnlockedLevel = Math.min(Math.max(1, maxUnlockedLevel), LEVELS.length);
+                        applyLevelInfoToMenu(currentLevelIndex);
+                    }
+
+                    // Re-apply ads config after configs refresh (same logic as initial initConfigs)
+                    if (typeof APPLOVIN_ADS_CONFIG !== 'undefined' && coreSDK?.ads?.setMockConfig) {
+                        console.log('[ADS] re-applying setMockConfig после initConfigs()...');
+                        try {
+                            coreSDK.ads.setMockConfig(APPLOVIN_ADS_CONFIG);
+                            await coreSDK.ads.init();
+                            console.log('[ADS] re-apply OK — ads.enabled теперь должен быть true');
+                        } catch(e) {
+                            console.error('[ADS] re-apply failed:', e && e.message);
+                        }
+                    } else {
+                        console.warn('[ADS] re-apply пропущен — cordova:', !!window.cordova,
+                            '| APPLOVIN_ADS_CONFIG defined:', typeof APPLOVIN_ADS_CONFIG !== 'undefined',
+                            '| setMockConfig:', typeof coreSDK?.ads?.setMockConfig);
+                    }
+                } catch (e) {
+                    console.warn('[AUTH] reinitConfigs failed:', e && (e.message || e));
+                }
+            })();
+            try {
+                await reinitConfigsPromise;
+            } finally {
+                reinitConfigsPromise = null;
+            }
+        }
+
+        async function refreshProfileAfterLogin() {
+            try {
+                if (!coreSDK?.profile?.getProfile) return;
+                const profile = await coreSDK.profile.getProfile();
+                const name = profile?.base?.name;
+                if (name) {
+                    playerName = name;
+                    try { await storage.set(PLAYER_NAME_KEY, playerName); } catch (_) {}
+                }
+                updatePlayerUI();
+            } catch (e) {
+                console.warn('[AUTH] profile refresh failed:', e && (e.message || e));
+            }
+        }
+
         async function handleGuestLogin() {
             try {
                 setAuthLoading(true);
@@ -4731,6 +4789,7 @@ let currentLevelIndex = 0;
                     playerName = 'Guest';
                     try { await storage.set(PLAYER_NAME_KEY, playerName); } catch (_) {}
                 }
+                await reinitConfigsAfterLogin();
                 updatePlayerUI();
                 applyAuthUI();
             } catch (err) {
@@ -4747,6 +4806,8 @@ let currentLevelIndex = 0;
                 const { credential } = await coreSDK.getGoogleIdToken();
                 await coreSDK.loginWithGoogle(credential);
                 await setAuthTypeLocal('google');
+                await reinitConfigsAfterLogin();
+                await refreshProfileAfterLogin();
                 applyAuthUI();
             } catch (err) {
                 console.error('Google login error:', err);
@@ -5102,6 +5163,7 @@ let currentLevelIndex = 0;
                 await coreSDK.loginAsGuest();
                 await setAuthTypeLocal('guest');
                 try { await storage.set(PLAYER_NAME_KEY, playerName); } catch (_) {}
+                await reinitConfigsAfterLogin();
             } catch (err) {
                 console.warn('Guest SDK login failed:', err);
             }
@@ -5117,6 +5179,8 @@ let currentLevelIndex = 0;
                 const { credential } = await coreSDK.getGoogleIdToken();
                 await coreSDK.loginWithGoogle(credential);
                 await setAuthTypeLocal('google');
+                await reinitConfigsAfterLogin();
+                await refreshProfileAfterLogin();
                 applyAuthUI();
                 updatePlayerUI();
                 hideLoginOverlay();

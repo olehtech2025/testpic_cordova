@@ -5937,32 +5937,62 @@ let currentLevelIndex = 0;
 <script>
 (function() {
   if (!window.cordova) return;
-  var WEB_CLIENT_ID = '660405658458-a7nlkksb8s2b8341bubgien9ojgei5f9.apps.googleusercontent.com';
-  document.addEventListener('deviceready', function() {
+  var FALLBACK_WEB_CLIENT_ID = '660405658458-a7nlkksb8s2b8341bubgien9ojgei5f9.apps.googleusercontent.com';
+  var MAX_TRIES = 30;
+  var TRY_DELAY_MS = 300;
+
+  function resolveWebClientId() {
+    try {
+      if (typeof coreSDK !== 'undefined' && typeof coreSDK.loadOAuthConfig === 'function' && typeof coreSDK.getGoogleClientId === 'function') {
+        return coreSDK.loadOAuthConfig()
+          .then(function() { return coreSDK.getGoogleClientId() || FALLBACK_WEB_CLIENT_ID; })
+          .catch(function() { return FALLBACK_WEB_CLIENT_ID; });
+      }
+    } catch (e) {}
+    return Promise.resolve(FALLBACK_WEB_CLIENT_ID);
+  }
+
+  function installOverride() {
     if (!window.plugins || !window.plugins.googleplus) {
       console.warn('[GoogleAuth] cordova-plugin-googleplus not available');
-      return;
+      return false;
     }
     if (typeof coreSDK === 'undefined') {
-      console.warn('[GoogleAuth] coreSDK not available for Google auth override');
-      return;
+      return false;
     }
     coreSDK.getGoogleIdToken = function() {
-      return new Promise(function(resolve, reject) {
-        window.plugins.googleplus.login(
-          { webClientId: WEB_CLIENT_ID, offline: true },
-          function(obj) {
-            console.log('[GoogleAuth] native login OK:', obj.email);
-            resolve({ credential: obj.idToken });
-          },
-          function(err) {
-            console.error('[GoogleAuth] native login failed:', err);
-            reject(new Error('Google Sign-In failed: ' + String(err)));
-          }
-        );
+      return resolveWebClientId().then(function(webClientId) {
+        return new Promise(function(resolve, reject) {
+          window.plugins.googleplus.login(
+            { webClientId: webClientId, offline: true },
+            function(obj) {
+              console.log('[GoogleAuth] native login OK:', obj.email);
+              resolve({ credential: obj.idToken });
+            },
+            function(err) {
+              console.error('[GoogleAuth] native login failed:', err);
+              reject(new Error('Google Sign-In failed: ' + String(err)));
+            }
+          );
+        });
       });
     };
     console.log('[GoogleAuth] Cordova native Google Sign-In override installed');
+    return true;
+  }
+
+  document.addEventListener('deviceready', function() {
+    if (installOverride()) return;
+    var tries = 0;
+    var timer = setInterval(function() {
+      tries += 1;
+      if (installOverride() || tries >= MAX_TRIES) {
+        clearInterval(timer);
+        if (tries >= MAX_TRIES) {
+          console.warn('[GoogleAuth] coreSDK not available after retries; override not installed');
+        }
+      }
+    }, TRY_DELAY_MS);
   }, { once: true });
 })();
 </script>
