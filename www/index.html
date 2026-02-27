@@ -3145,6 +3145,7 @@
         const settingsOverlay  = document.getElementById('settingsOverlay');
         const settingsCloseBtn = document.getElementById('settingsCloseBtn');
         const soundToggle      = document.getElementById('soundToggle');
+        const musicToggle      = document.getElementById('musicToggle');
         const settingsLinks    = document.getElementById('settingsLinks');
 
         // Settings sections
@@ -3243,6 +3244,7 @@
         const BG_HEIGHT = 1536;
 
         const SOUND_KEY       = 'findit_sound_enabled';
+        const MUSIC_KEY       = 'findit_music_enabled';
         const PROGRESS_KEY    = 'findit_max_level';
         const SCORE_KEY       = 'findit_total_score';
 
@@ -3257,6 +3259,8 @@
 
         // AUDIO LAZY LOADING
         const AUDIO_URLS = {
+            menuMusic: 'https://stage-configs.artintgames.com/v1/game-assets/hidden_object_menu_loop_fixed.mp4',
+            levelMusic: 'https://stage-configs.artintgames.com/v1/game-assets/hidden_object_bg_loop.mp4',
             hit: 'https://stage-configs.artintgames.com/v1/storage/view/9/hit.mp3',
             miss: 'https://stage-configs.artintgames.com/v1/storage/view/9/miss.mp3',
             win: 'https://stage-configs.artintgames.com/v1/storage/view/9/win.mp3',
@@ -3267,9 +3271,9 @@
         function getAudio(key) {
             if (!audioCache[key] && AUDIO_URLS[key]) {
                 audioCache[key] = new Audio(AUDIO_URLS[key]);
-                if (key === 'menuMusic') {
+                if (key === 'menuMusic' || key === 'levelMusic') {
                     audioCache[key].loop = true;
-                    audioCache[key].volume = 0.02;
+                    audioCache[key].volume = (key === 'menuMusic') ? 0.02 : 0.2;
                 } else if (key === 'hit' || key === 'miss') {
                     audioCache[key].volume = 0.5;
                 } else {
@@ -3419,6 +3423,7 @@ let currentLevelIndex = 0;
 
         let gameOver    = false;
         let soundEnabled = true;
+        let musicEnabled = true;
         let hintsLeft   = 2;
         const maxHints  = 2;
         let overlayMode = 'restart';
@@ -3671,17 +3676,19 @@ let currentLevelIndex = 0;
 
         function getLevelMusic(levelIndex) {
             const level = LEVELS[levelIndex];
-            if (!level || !level.music) return null;
-            if (!level._musicAudio) {
-                level._musicAudio = new Audio(level.music);
-                level._musicAudio.loop = true;
-                level._musicAudio.volume = 0.2;
+            if (level && level.music) {
+                if (!level._musicAudio) {
+                    level._musicAudio = new Audio(level.music);
+                    level._musicAudio.loop = true;
+                    level._musicAudio.volume = 0.2;
+                }
+                return level._musicAudio;
             }
-            return level._musicAudio;
+            return getAudio('levelMusic');
         }
 
         function startMenuMusic() {
-            if (!soundEnabled) return;
+            if (!musicEnabled) return;
             const menuMusic = getAudio('menuMusic');
             if (currentMusic && currentMusic !== menuMusic) {
                 try { currentMusic.pause(); } catch (e) {}
@@ -3693,7 +3700,7 @@ let currentLevelIndex = 0;
         }
 
         function startLevelMusic(index) {
-            if (!soundEnabled) return;
+            if (!musicEnabled) return;
             const m = getLevelMusic(index);
             if (!m) return;
             if (currentMusic && currentMusic !== m) {
@@ -3732,8 +3739,10 @@ let currentLevelIndex = 0;
                         totalScore = meta.totalScore;
                     if (meta.soundEnabled !== undefined)
                         soundEnabled = !!meta.soundEnabled;
+                    if (meta.musicEnabled !== undefined)
+                        musicEnabled = !!meta.musicEnabled;
                 }
-                console.log('[GameState] Loaded:', { maxUnlockedLevel, totalScore, soundEnabled });
+                console.log('[GameState] Loaded:', { maxUnlockedLevel, totalScore, soundEnabled, musicEnabled });
             } catch (e) {
                 console.warn('[GameState] load failed, KV fallback:', e.message);
                 return false;
@@ -3746,9 +3755,10 @@ let currentLevelIndex = 0;
                 await coreSDK.gamestate.update({
                     maxUnlockedLevel,
                     totalScore,
-                    soundEnabled
+                    soundEnabled,
+                    musicEnabled
                 });
-                console.log('[GameState] Saved:', { maxUnlockedLevel, totalScore, soundEnabled });
+                console.log('[GameState] Saved:', { maxUnlockedLevel, totalScore, soundEnabled, musicEnabled });
             } catch (e) {
                 console.warn('[GameState] save failed, KV fallback:', e.message);
                 try { await storage.set(PROGRESS_KEY, String(maxUnlockedLevel)); } catch (_) {}
@@ -4073,13 +4083,18 @@ let currentLevelIndex = 0;
 
         async function setSoundEnabled(value) {
             soundEnabled = value;
-            soundToggle.textContent = soundEnabled ? 'On' : 'Off';
-            soundToggle.classList.toggle('on',  soundEnabled);
-            soundToggle.classList.toggle('off', !soundEnabled);
+            if (soundToggle) soundToggle.checked = soundEnabled;
             try { await storage.set(SOUND_KEY, String(soundEnabled)); } catch (e) {}
             saveGameState().catch(() => {});
+        }
 
-            if (!soundEnabled) {
+        async function setMusicEnabled(value) {
+            musicEnabled = value;
+            if (musicToggle) musicToggle.checked = musicEnabled;
+            try { await storage.set(MUSIC_KEY, String(musicEnabled)); } catch (e) {}
+            saveGameState().catch(() => {});
+
+            if (!musicEnabled) {
                 stopCurrentMusic();
             } else {
                 if (menuScreen.classList.contains('active') || scoreScreen.classList.contains('active')) {
@@ -4242,9 +4257,10 @@ let currentLevelIndex = 0;
             if (!gsLoaded) {
                 // Fallback: load from KV storage
                 try {
-                    const data = await storage.getMany([SOUND_KEY, PROGRESS_KEY, SCORE_KEY]);
+                    const data = await storage.getMany([SOUND_KEY, MUSIC_KEY, PROGRESS_KEY, SCORE_KEY]);
 
                     soundEnabled = data[SOUND_KEY] === null ? true : data[SOUND_KEY] === 'true';
+                    musicEnabled = data[MUSIC_KEY] === null ? true : data[MUSIC_KEY] === 'true';
 
                     if (data[PROGRESS_KEY] !== null) {
                         const n = parseInt(data[PROGRESS_KEY], 10);
@@ -4257,6 +4273,7 @@ let currentLevelIndex = 0;
                     }
                 } catch (e) {
                     soundEnabled = true;
+                    musicEnabled = true;
                     maxUnlockedLevel = 1;
                     totalScore = 0;
                 }
@@ -4266,11 +4283,16 @@ let currentLevelIndex = 0;
                     const { value } = await storage.get(SOUND_KEY);
                     if (value !== null) soundEnabled = value === 'true';
                 } catch (_) {}
+                try {
+                    const { value } = await storage.get(MUSIC_KEY);
+                    if (value !== null) musicEnabled = value === 'true';
+                } catch (_) {}
             }
 
             currentLevelIndex = maxUnlockedLevel - 1;
 
             await setSoundEnabled(soundEnabled);
+            await setMusicEnabled(musicEnabled);
             await loadPlayerFromStorage();
             applyLevelInfoToMenu(currentLevelIndex);
             updateScoreUI();
@@ -4880,7 +4902,8 @@ let currentLevelIndex = 0;
             });
         }
 
-        soundToggle.addEventListener('click', () => setSoundEnabled(!soundEnabled).catch(() => {}));
+        soundToggle && soundToggle.addEventListener('click', () => setSoundEnabled(!soundEnabled).catch(() => {}));
+        musicToggle && musicToggle.addEventListener('click', () => setMusicEnabled(!musicEnabled).catch(() => {}));
 
         // Hint logic (game): if 0 -> show ad stub, reward +1 hint and use immediately
         function useHintNow() {

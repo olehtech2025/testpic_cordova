@@ -27,6 +27,16 @@ sdk_src = sdk_files[-1]
 shutil.copy(sdk_src, os.path.join(ROOT, 'www', 'game-sdk.umd.js'))
 print(f'SDK copied: {os.path.relpath(sdk_src, ROOT)} → www/game-sdk.umd.js')
 
+# --- 1b. Copy game assets (music, etc.) ---
+assets_src = os.path.join(ROOT, '..', 'game-core-sdk-frontend', 'public', 'game', 'testpic', 'assets')
+assets_dest = os.path.join(ROOT, 'www', 'assets')
+if os.path.isdir(assets_src):
+    os.makedirs(assets_dest, exist_ok=True)
+    shutil.copytree(assets_src, assets_dest, dirs_exist_ok=True)
+    print(f'Assets copied: {os.path.relpath(assets_src, ROOT)} → www/assets')
+else:
+    print('WARNING: assets folder not found — skipping assets copy')
+
 # --- 2. Read source HTML ---
 with open(SRC, 'r', encoding='utf-8') as f:
     html = f.read()
