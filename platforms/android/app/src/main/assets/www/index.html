@@ -1648,6 +1648,7 @@
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
+            cursor: pointer;
         }
 
         .player-name { font-size: 13px; font-weight: 600; }
@@ -1850,6 +1851,7 @@
             box-shadow: 0 10px 24px rgba(0,0,0,0.45);
             background-size: cover;
             background-position: center;
+            cursor: pointer;
         }
 
         .profile-name {
@@ -4610,7 +4612,10 @@ let currentLevelIndex = 0;
             editProfileSaveBtn.textContent = 'Saving...';
 
             try {
-                await coreSDK.profile.update({ base: { name: newName } });
+                const avatarToSave = editProfilePendingAvatar || playerAvatarSymbol || null;
+                const sdkPayload = { base: { name: newName } };
+                if (avatarToSave) sdkPayload.base.avatarDataUrl = avatarToSave;
+                await coreSDK.profile.update(sdkPayload);
                 console.log('[Profile] SDK update success:', newName);
             } catch (e) {
                 console.warn('[Profile] SDK update failed, KV only:', e.message);
@@ -4788,6 +4793,11 @@ let currentLevelIndex = 0;
                     playerName = name;
                     try { await storage.set(PLAYER_NAME_KEY, playerName); } catch (_) {}
                 }
+                const avatarDataUrl = profile?.base?.avatarDataUrl;
+                if (avatarDataUrl) {
+                    playerAvatarSymbol = avatarDataUrl;
+                    try { await storage.set(PLAYER_AVATAR_KEY, avatarDataUrl); } catch (_) {}
+                }
                 updatePlayerUI();
             } catch (e) {
                 console.warn('[AUTH] profile refresh failed:', e && (e.message || e));
@@ -4912,6 +4922,17 @@ let currentLevelIndex = 0;
             openEditProfile();
         });
 
+        // Clicking the avatar in the profile modal goes straight to edit
+        profileAvatar && profileAvatar.addEventListener('click', () => {
+            openEditProfile();
+        });
+
+        // Clicking the avatar in the menu header opens the profile modal
+        menuPlayerAvatar && menuPlayerAvatar.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleProfileOpen();
+        });
+
         profileLogoutBtn && profileLogoutBtn.addEventListener('click', () => {
             handleLogout().catch(() => {});
             if (profileOverlay) profileOverlay.classList.remove('visible');
@@ -4937,9 +4958,22 @@ let currentLevelIndex = 0;
             if (!file) return;
             const reader = new FileReader();
             reader.onload = (ev) => {
-                editProfilePendingAvatar = ev.target.result;
-                editProfileAvatarEl.style.backgroundImage = 'url(' + editProfilePendingAvatar + ')';
-                editProfileAvatarEl.textContent = '';
+                // Compress to 128×128 JPEG so data URL is small enough for server profile storage
+                const img = new Image();
+                img.onload = () => {
+                    const SIZE = 128;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = SIZE; canvas.height = SIZE;
+                    const ctx = canvas.getContext('2d');
+                    const s = Math.min(img.naturalWidth, img.naturalHeight);
+                    const sx = (img.naturalWidth - s) / 2;
+                    const sy = (img.naturalHeight - s) / 2;
+                    ctx.drawImage(img, sx, sy, s, s, 0, 0, SIZE, SIZE);
+                    editProfilePendingAvatar = canvas.toDataURL('image/jpeg', 0.82);
+                    editProfileAvatarEl.style.backgroundImage = 'url(' + editProfilePendingAvatar + ')';
+                    editProfileAvatarEl.textContent = '';
+                };
+                img.src = ev.target.result;
             };
             reader.readAsDataURL(file);
             editAvatarInput.value = '';
