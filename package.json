@@ -6,8 +6,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "gen": "python3 scripts/build-testpic.py && python3 scripts/gen-assets.py",
-    "build": "npm run gen && cordova build android",
+    "build": "cordova build android",
+    "sync:sdk": "cp $(ls ../game-core-sdk-frontend/public/sdk/1.0.108/game-sdk.umd.*.js | tail -1) www/game-sdk.umd.js",
     "run": "adb -s emulator-5556 install -r platforms/android/app/build/outputs/apk/debug/app-debug.apk && adb -s emulator-5556 shell am start -n com.find.object.testpic/.MainActivity",
     "build:run": "npm run build && npm run run",
     "log": "adb logcat | grep -E '(chromium|AppLovin)'",
