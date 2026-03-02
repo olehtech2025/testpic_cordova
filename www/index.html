@@ -4734,9 +4734,6 @@ let currentLevelIndex = 0;
                     const newLevels = configResult.get('testpic-init.LEVELS');
                     if (Array.isArray(newLevels) && newLevels.length) {
                         LEVELS = newLevels;
-                        if (currentLevelIndex >= LEVELS.length) currentLevelIndex = 0;
-                        maxUnlockedLevel = Math.min(Math.max(1, maxUnlockedLevel), LEVELS.length);
-                        applyLevelInfoToMenu(currentLevelIndex);
                     }
 
                     // Re-apply ads config after configs refresh (same logic as initial initConfigs)
@@ -4757,6 +4754,17 @@ let currentLevelIndex = 0;
                 } catch (e) {
                     console.warn('[AUTH] reinitConfigs failed:', e && (e.message || e));
                 }
+                // Reset to defaults so the previous user's values are not carried over.
+                // loadGameState() will overwrite with the new user's server data if it exists.
+                // KV fallback is intentionally skipped: KV is per-device and would return
+                // the old user's values, which is wrong after an account switch.
+                maxUnlockedLevel = 1;
+                totalScore = 0;
+                await loadGameState();
+                currentLevelIndex = Math.min(Math.max(0, maxUnlockedLevel - 1), LEVELS.length - 1);
+                applyLevelInfoToMenu(currentLevelIndex);
+                updateScoreUI();
+                updateGameLevelLabel();
             })();
             try {
                 await reinitConfigsPromise;
@@ -4829,6 +4837,14 @@ let currentLevelIndex = 0;
                 if (coreSDK.systemParams) coreSDK.systemParams.authToken = null;
                 setAuthLoading(false);
                 await ensureGuestAuth();
+                // Reset and reload state for the new guest session (same as login flow).
+                maxUnlockedLevel = 1;
+                totalScore = 0;
+                await loadGameState();
+                currentLevelIndex = Math.min(Math.max(0, maxUnlockedLevel - 1), LEVELS.length - 1);
+                applyLevelInfoToMenu(currentLevelIndex);
+                updateScoreUI();
+                updateGameLevelLabel();
                 applyAuthUI();
                 updatePlayerUI();
             }

@@ -118,6 +118,93 @@ if start_marker in html and end_marker in html:
     html = html[:start] + fallback_block + html[end + len(end_marker):]
     print('Fallback LEVELS injected (initConfigs guarded)')
 
+# --- 3d. Fix: reload game state after login/logout to avoid stale session data ---
+#
+# BUG: after switching accounts (guest→Google or Google→logout),
+# the previous user's maxUnlockedLevel / totalScore stay in memory until reload.
+# Root causes:
+#   1. reinitConfigsAfterLogin() clamps maxUnlockedLevel with the OLD value and
+#      never calls loadGameState() with the new auth token.
+#   2. handleLogout() never resets state after ensureGuestAuth().
+#
+# FIX in reinitConfigsAfterLogin():
+#   • Remove the stale maxUnlockedLevel clamp (uses old user's value).
+#   • After initConfigs try/catch, reset state to defaults, then reload from server.
+#   • Update all UI immediately.
+#
+# FIX in handleLogout():
+#   • After ensureGuestAuth() (new guest token), reset state to defaults,
+#     reload from server, update all UI.
+
+_OLD_REINIT_LEVELS = """                    const newLevels = configResult.get('testpic-init.LEVELS');
+                    if (Array.isArray(newLevels) && newLevels.length) {
+                        LEVELS = newLevels;
+                        if (currentLevelIndex >= LEVELS.length) currentLevelIndex = 0;
+                        maxUnlockedLevel = Math.min(Math.max(1, maxUnlockedLevel), LEVELS.length);
+                        applyLevelInfoToMenu(currentLevelIndex);
+                    }"""
+
+_NEW_REINIT_LEVELS = """                    const newLevels = configResult.get('testpic-init.LEVELS');
+                    if (Array.isArray(newLevels) && newLevels.length) {
+                        LEVELS = newLevels;
+                    }"""
+
+# The end of the IIFE inside reinitConfigsAfterLogin — we inject the reload block before })()
+_OLD_REINIT_END = """                } catch (e) {
+                    console.warn('[AUTH] reinitConfigs failed:', e && (e.message || e));
+                }
+            })();"""
+
+_NEW_REINIT_END = """                } catch (e) {
+                    console.warn('[AUTH] reinitConfigs failed:', e && (e.message || e));
+                }
+                // Reset to defaults so the previous user's values are not carried over.
+                // loadGameState() will overwrite with the new user's server data if it exists.
+                // KV fallback is intentionally skipped: KV is per-device and would return
+                // the old user's values, which is wrong after an account switch.
+                maxUnlockedLevel = 1;
+                totalScore = 0;
+                await loadGameState();
+                currentLevelIndex = Math.min(Math.max(0, maxUnlockedLevel - 1), LEVELS.length - 1);
+                applyLevelInfoToMenu(currentLevelIndex);
+                updateScoreUI();
+                updateGameLevelLabel();
+            })();"""
+
+if _OLD_REINIT_LEVELS in html and _OLD_REINIT_END in html:
+    html = html.replace(_OLD_REINIT_LEVELS, _NEW_REINIT_LEVELS)
+    html = html.replace(_OLD_REINIT_END, _NEW_REINIT_END)
+    print('Auth reinit: loadGameState after login patched')
+else:
+    print('WARNING: auth reinit patch not applied — source strings not found')
+
+# handleLogout: reset state + reload after switching to new guest session
+_OLD_LOGOUT = """                if (coreSDK.systemParams) coreSDK.systemParams.authToken = null;
+                setAuthLoading(false);
+                await ensureGuestAuth();
+                applyAuthUI();
+                updatePlayerUI();"""
+
+_NEW_LOGOUT = """                if (coreSDK.systemParams) coreSDK.systemParams.authToken = null;
+                setAuthLoading(false);
+                await ensureGuestAuth();
+                // Reset and reload state for the new guest session (same as login flow).
+                maxUnlockedLevel = 1;
+                totalScore = 0;
+                await loadGameState();
+                currentLevelIndex = Math.min(Math.max(0, maxUnlockedLevel - 1), LEVELS.length - 1);
+                applyLevelInfoToMenu(currentLevelIndex);
+                updateScoreUI();
+                updateGameLevelLabel();
+                applyAuthUI();
+                updatePlayerUI();"""
+
+if _OLD_LOGOUT in html:
+    html = html.replace(_OLD_LOGOUT, _NEW_LOGOUT)
+    print('Auth logout: state reset after logout patched')
+else:
+    print('WARNING: logout patch not applied — source strings not found')
+
 # --- 4. Inject Cordova native Google Sign-In override (before </body>) ---
 # In Cordova WebView, Google GSI popup is blocked by Google (since 2019).
 # Use cordova-plugin-googleplus for native Android Google Sign-In instead.
