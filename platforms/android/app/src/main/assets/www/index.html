@@ -10,8 +10,9 @@
         :root{
             --safeT: max(10px, env(safe-area-inset-top));
             --safeR: max(10px, env(safe-area-inset-right));
-            --safeB: max(10px, env(safe-area-inset-bottom));
             --safeL: max(10px, env(safe-area-inset-left));
+            --banner-h: 0px; /* set to 50px by JS when native banner is visible */
+            --safeB: calc(max(10px, env(safe-area-inset-bottom)) + var(--banner-h));
             --uiGap: 10px;
         }
 
@@ -774,7 +775,7 @@
             display: none;
             flex-direction: column;
             gap: 14px;
-            padding: 16px 18px 24px;
+            padding: 16px 18px calc(24px + var(--banner-h, 0px));
             min-height: 100%;
             align-items: center;
         }
@@ -959,7 +960,7 @@
                 --win-ad-w: 320px;
                 --win-ad-h: 50px;
                 gap: 16px;
-                padding: 50px 18px 22px;
+                padding: 50px 18px calc(22px + var(--banner-h, 0px));
                 max-width: 380px;
             }
 
@@ -3362,7 +3363,12 @@ let currentLevelIndex = 0;
             }
             console.log('[ADS] showBannerAd: вызываем showAd("banner", "find_object_banner")');
             coreSDK.ads.showAd('banner', 'find_object_banner')
-                .then(r => console.log('[ADS] showBannerAd result:', JSON.stringify(r)))
+                .then(r => {
+                    console.log('[ADS] showBannerAd result:', JSON.stringify(r));
+                    // Reserve space for the native banner so it doesn't overlap game UI.
+                    // Standard AppLovin banner height is 50dp; --safeB is built on --banner-h.
+                    document.documentElement.style.setProperty('--banner-h', '50px');
+                })
                 .catch(e => console.error('[ADS] showBannerAd error:', e && e.message, e));
         }
 
