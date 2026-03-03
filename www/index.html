@@ -4293,6 +4293,9 @@ let currentLevelIndex = 0;
             await setSoundEnabled(soundEnabled);
             await setMusicEnabled(musicEnabled);
             await loadPlayerFromStorage();
+            // Sync name/avatar from server on startup — covers the reinstall case where
+            // local KV is wiped but the server still holds the user's profile.
+            await refreshProfileAfterLogin();
             applyLevelInfoToMenu(currentLevelIndex);
             updateScoreUI();
             updatePlayerUI();
@@ -4611,14 +4614,18 @@ let currentLevelIndex = 0;
             editProfileSaveBtn.disabled = true;
             editProfileSaveBtn.textContent = 'Saving...';
 
+            // Save name + avatar to profile server.
+            // base.avatar is URL-only (max 512 chars) so avatar goes into custom scope.
+            // custom has no field restrictions beyond the 8KB total payload limit.
             try {
-                const avatarToSave = editProfilePendingAvatar || playerAvatarSymbol || null;
                 const sdkPayload = { base: { name: newName } };
-                if (avatarToSave) sdkPayload.base.avatarDataUrl = avatarToSave;
+                if (editProfilePendingAvatar) sdkPayload.custom = { avatar: editProfilePendingAvatar };
                 await coreSDK.profile.update(sdkPayload);
                 console.log('[Profile] SDK update success:', newName);
             } catch (e) {
-                console.warn('[Profile] SDK update failed, KV only:', e.message);
+                console.warn('[Profile] SDK update failed:', e.message);
+                // Fallback: save name alone (avatar may have pushed payload over 8KB)
+                try { await coreSDK.profile.update({ base: { name: newName } }); } catch (_) {}
             }
 
             playerName = newName;
@@ -4786,14 +4793,17 @@ let currentLevelIndex = 0;
 
         async function refreshProfileAfterLogin() {
             try {
-                if (!coreSDK?.profile?.getProfile) return;
-                const profile = await coreSDK.profile.getProfile();
-                const name = profile?.base?.name;
+                // SDK exports profile.getMe (not getProfile)
+                const getProfileFn = coreSDK?.profile?.getMe || coreSDK?.profile?.getProfile;
+                if (!getProfileFn) return;
+                const profile = await getProfileFn.call(coreSDK.profile);
+                const name = profile?.base?.name || profile?.name;
                 if (name) {
                     playerName = name;
                     try { await storage.set(PLAYER_NAME_KEY, playerName); } catch (_) {}
                 }
-                const avatarDataUrl = profile?.base?.avatarDataUrl;
+                // Avatar is stored in custom.avatar (base.avatar is URL-only, max 512 chars)
+                const avatarDataUrl = profile?.custom?.avatar || profile?.base?.avatarDataUrl || profile?.avatarDataUrl;
                 if (avatarDataUrl) {
                     playerAvatarSymbol = avatarDataUrl;
                     try { await storage.set(PLAYER_AVATAR_KEY, avatarDataUrl); } catch (_) {}
@@ -4958,9 +4968,9 @@ let currentLevelIndex = 0;
             if (!file) return;
             const reader = new FileReader();
             reader.onload = (ev) => {
-                // Compress to 128×128 JPEG so data URL is small enough for server profile storage
                 const img = new Image();
                 img.onload = () => {
+                    // Crop to square from center
                     const SIZE = 128;
                     const canvas = document.createElement('canvas');
                     canvas.width = SIZE; canvas.height = SIZE;
@@ -4969,8 +4979,17 @@ let currentLevelIndex = 0;
                     const sx = (img.naturalWidth - s) / 2;
                     const sy = (img.naturalHeight - s) / 2;
                     ctx.drawImage(img, sx, sy, s, s, 0, 0, SIZE, SIZE);
-                    editProfilePendingAvatar = canvas.toDataURL('image/jpeg', 0.82);
-                    editProfileAvatarEl.style.backgroundImage = 'url(' + editProfilePendingAvatar + ')';
+                    // Reduce quality until the data URL fits within the profile server's
+                    // 8 KB payload limit (base64 must be < ~5900 chars to leave room for JSON wrapper)
+                    const MAX_B64 = 5900;
+                    let quality = 0.80;
+                    let dataUrl = canvas.toDataURL('image/jpeg', quality);
+                    while (dataUrl.length > MAX_B64 && quality > 0.15) {
+                        quality = Math.round((quality - 0.10) * 100) / 100;
+                        dataUrl = canvas.toDataURL('image/jpeg', quality);
+                    }
+                    editProfilePendingAvatar = dataUrl;
+                    editProfileAvatarEl.style.backgroundImage = 'url(' + dataUrl + ')';
                     editProfileAvatarEl.textContent = '';
                 };
                 img.src = ev.target.result;
