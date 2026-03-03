@@ -20,13 +20,9 @@
         <icon src="res/android/xxhdpi.png"  density="xxhdpi" />
         <icon src="res/android/xxxhdpi.png" density="xxxhdpi" />
 
-        <!-- Adaptive icons (API 26+): system clips to device shape (round, squircle, etc.) -->
-        <icon background="res/android/adaptive/ldpi_background.png"    foreground="res/android/adaptive/ldpi_foreground.png"    density="ldpi" />
-        <icon background="res/android/adaptive/mdpi_background.png"    foreground="res/android/adaptive/mdpi_foreground.png"    density="mdpi" />
-        <icon background="res/android/adaptive/hdpi_background.png"    foreground="res/android/adaptive/hdpi_foreground.png"    density="hdpi" />
-        <icon background="res/android/adaptive/xhdpi_background.png"   foreground="res/android/adaptive/xhdpi_foreground.png"   density="xhdpi" />
-        <icon background="res/android/adaptive/xxhdpi_background.png"  foreground="res/android/adaptive/xxhdpi_foreground.png"  density="xxhdpi" />
-        <icon background="res/android/adaptive/xxxhdpi_background.png" foreground="res/android/adaptive/xxxhdpi_foreground.png" density="xxxhdpi" />
+        <!-- Adaptive icon (API 26+): anydpi, no density — Cordova places in mipmap-anydpi-v26/
+             System clips background to device icon shape (squircle on Samsung, circle on Pixel, etc.) -->
+        <icon background="res/android/adaptive/background.png" foreground="res/android/adaptive/foreground.png" />
         <splash src="res/screen/android/ldpi.png"    density="ldpi" />
         <splash src="res/screen/android/mdpi.png"    density="mdpi" />
         <splash src="res/screen/android/hdpi.png"    density="hdpi" />

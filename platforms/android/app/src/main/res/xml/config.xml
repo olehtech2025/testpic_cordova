@@ -31,12 +31,7 @@
     <icon density="xhdpi" src="res/android/xhdpi.png" />
     <icon density="xxhdpi" src="res/android/xxhdpi.png" />
     <icon density="xxxhdpi" src="res/android/xxxhdpi.png" />
-    <icon background="res/android/adaptive/ldpi_background.png" density="ldpi" foreground="res/android/adaptive/ldpi_foreground.png" />
-    <icon background="res/android/adaptive/mdpi_background.png" density="mdpi" foreground="res/android/adaptive/mdpi_foreground.png" />
-    <icon background="res/android/adaptive/hdpi_background.png" density="hdpi" foreground="res/android/adaptive/hdpi_foreground.png" />
-    <icon background="res/android/adaptive/xhdpi_background.png" density="xhdpi" foreground="res/android/adaptive/xhdpi_foreground.png" />
-    <icon background="res/android/adaptive/xxhdpi_background.png" density="xxhdpi" foreground="res/android/adaptive/xxhdpi_foreground.png" />
-    <icon background="res/android/adaptive/xxxhdpi_background.png" density="xxxhdpi" foreground="res/android/adaptive/xxxhdpi_foreground.png" />
+    <icon background="res/android/adaptive/background.png" foreground="res/android/adaptive/foreground.png" />
     <splash density="ldpi" src="res/screen/android/ldpi.png" />
     <splash density="mdpi" src="res/screen/android/mdpi.png" />
     <splash density="hdpi" src="res/screen/android/hdpi.png" />

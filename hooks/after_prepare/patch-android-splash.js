@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
- * After prepare hook: patches Android splash screen
+ * After prepare hook: patches Android splash screen + adaptive icon
  * - Copies density-specific splash images from res/screen/android/ to platforms/drawable-DENSITY/screen.png
  *   (Cordova 14 ignores splash tags, so we do it manually here)
  * - Sets dark purple background (#1a1040) for native Android 12+ splash
  * - Uses our app icon as the native splash icon
+ * - Generates adaptive icon XML in mipmap-anydpi-v26/ (Cordova 14 leaves v26 dirs empty)
  */
 var fs   = require('fs');
 var path = require('path');
@@ -57,4 +58,36 @@ module.exports = function(context) {
     + '    android:gravity="center" />\n';
   fs.writeFileSync(splashDrawable, bitmapXml);
   console.log('[hook] Replaced ic_cdv_splashscreen.xml with ic_launcher bitmap');
+
+  // 4. Adaptive icon (Cordova 14 creates mipmap-*-v26/ dirs but leaves them empty)
+  //    We generate: mipmap-anydpi-v26/ic_launcher.xml + ic_launcher_round.xml
+  //    and copy background/foreground PNGs to drawable/.
+  var adaptiveSrc = path.join(projectRoot, 'res', 'android', 'adaptive');
+  var fgSrc = path.join(adaptiveSrc, 'foreground.png');
+  var bgSrc = path.join(adaptiveSrc, 'background.png');
+
+  if (fs.existsSync(fgSrc) && fs.existsSync(bgSrc)) {
+    // Copy PNGs to drawable/
+    var drawableDir = path.join(resPath, 'drawable');
+    fs.mkdirSync(drawableDir, { recursive: true });
+    fs.copyFileSync(fgSrc, path.join(drawableDir, 'ic_launcher_foreground.png'));
+    fs.copyFileSync(bgSrc, path.join(drawableDir, 'ic_launcher_background.png'));
+
+    // Write adaptive-icon XML
+    var adaptiveXml = '<?xml version="1.0" encoding="utf-8"?>\n'
+      + '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
+      + '    <background android:drawable="@drawable/ic_launcher_background"/>\n'
+      + '    <foreground android:drawable="@drawable/ic_launcher_foreground"/>\n'
+      + '</adaptive-icon>\n';
+
+    var anydpiDir = path.join(resPath, 'mipmap-anydpi-v26');
+    fs.mkdirSync(anydpiDir, { recursive: true });
+    fs.writeFileSync(path.join(anydpiDir, 'ic_launcher.xml'), adaptiveXml);
+    fs.writeFileSync(path.join(anydpiDir, 'ic_launcher_round.xml'), adaptiveXml);
+
+    console.log('[hook] Adaptive icon: wrote mipmap-anydpi-v26/ic_launcher.xml + ic_launcher_round.xml');
+    console.log('[hook] Adaptive icon: copied foreground/background PNGs to drawable/');
+  } else {
+    console.warn('[hook] Adaptive icon: source PNGs not found, skipping');
+  }
 };
