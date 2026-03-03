@@ -3325,17 +3325,16 @@ const TESTPIC_FALLBACK_LEVELS = [
       ]},
 ];
 
-// Load LEVELS from remote config via initConfigs (fallback on failure)
+// Load LEVELS: initConfigs primes configState (v:2.0.0 required by server),
+// then fetchConfigs merges and returns the combined result.
 let LEVELS;
 try {
-    const configResult = await coreSDK.initConfigs({
-        version: '2.0.0',
-        keys: ['testpic-init']
-    });
+    await coreSDK.initConfigs({ version: '2.0.0', keys: ['testpic-init'] });
+    const configResult = await coreSDK.fetchConfigs({ version: '2.0.0', scopes: ['testpic-init'] });
     LEVELS = configResult.get('testpic-init.LEVELS') || TESTPIC_FALLBACK_LEVELS;
     console.log('[GAME] LEVELS from config, count:', LEVELS.length);
 } catch (e) {
-    console.error('[GAME] initConfigs failed, using fallback LEVELS:', e && (e.message || e));
+    console.error('[GAME] fetchConfigs failed, using fallback LEVELS:', e && (e.message || e));
     LEVELS = TESTPIC_FALLBACK_LEVELS;
 }
 
@@ -4745,18 +4744,18 @@ let currentLevelIndex = 0;
             if (reinitConfigsPromise) return reinitConfigsPromise;
             reinitConfigsPromise = (async () => {
                 try {
-                    const configResult = await coreSDK.initConfigs({
+                    const configResult = await coreSDK.fetchConfigs({
                         version: '2.0.0',
-                        keys: ['testpic-init']
+                        scopes: ['testpic-init']
                     });
                     const newLevels = configResult.get('testpic-init.LEVELS');
-                    if (Array.isArray(newLevels) && newLevels.length) {
+                    if (Array.isArray(newLevels) && newLevels?.length) {
                         LEVELS = newLevels;
                     }
 
-                    // Re-apply ads config after configs refresh (same logic as initial initConfigs)
+                    // Re-apply ads config after configs refresh (same logic as initial fetchConfigs)
                     if (typeof APPLOVIN_ADS_CONFIG !== 'undefined' && coreSDK?.ads?.setMockConfig) {
-                        console.log('[ADS] re-applying setMockConfig после initConfigs()...');
+                        console.log('[ADS] re-applying setMockConfig после fetchConfigs()...');
                         try {
                             coreSDK.ads.setMockConfig(APPLOVIN_ADS_CONFIG);
                             await coreSDK.ads.init();
